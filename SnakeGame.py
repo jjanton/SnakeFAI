@@ -5,12 +5,13 @@ import random
 
 class SnakeGame:
 
-    def __init__(self, displayWidth, displayHeight, displayCaption, blockSize, snakeSpeed):
+    def __init__(self, displayWidth, displayHeight, displayCaption, blockSize, snakeSpeed, agent = None):
         self.displayWidth = displayWidth
         self.displayHeight = displayHeight
         self.displayCaption = displayCaption
         self.blockSize = blockSize
         self.snakeSpeed = snakeSpeed
+        self.agent = agent
 
         pygame.init()
         self.display = pygame.display.set_mode((displayWidth, displayHeight))
@@ -101,11 +102,56 @@ class SnakeGame:
         # End game if snake collides with itself
         for x in self.snakeList[:-1]:
             if x == snakeHead:
-                self.gameClose = True
+                return True
 
         # Check if snake hit a wall
-        if self.x1 >= self.displayWidth or self.x1 < 0 or self.y1 >= self.displayHeight or self.y1 < 0:
-            self.gameClose = True
+        if self.x1 >= (self.displayWidth - self.blockSize) \
+                or self.x1 <= 0 \
+                or self.y1 >= (self.displayHeight-self.blockSize) \
+                or self.y1 <= 0:
+            return True
+
+        return False
+
+    def getChange(self, keyEvent):
+        xChange = 0
+        yChange = 0
+        direction = None
+
+        if keyEvent == pygame.K_LEFT and self.direction != "RIGHT":
+            xChange = -self.blockSize
+            yChange = 0
+            direction = "LEFT"
+        elif keyEvent == pygame.K_RIGHT and self.direction != "LEFT":
+            xChange = self.blockSize
+            yChange = 0
+            direction = "RIGHT"
+        elif keyEvent == pygame.K_UP and self.direction != "DOWN":
+            yChange = -self.blockSize
+            xChange = 0
+            direction = "UP"
+        elif keyEvent == pygame.K_DOWN and self.direction != "UP":
+            yChange = self.blockSize
+            xChange = 0
+            direction = "DOWN"
+
+        return (xChange, yChange, direction)
+
+
+    def getValidActions(self):
+        actions = []
+        for action in [pygame.K_LEFT, pygame.K_RIGHT, pygame.K_UP, pygame.K_DOWN]:
+            (xChange, yChange, direction) = self.getChange(action)
+            if not direction:
+                continue
+
+            position = self.getNextPosition((self.x1, self.y1), (xChange, yChange))
+            if not self.checkCollisions(position):
+                actions.append((action, position))
+        return actions
+
+    def getNextPosition(self, snakehead, change):
+        return (snakehead[0] + change[0], snakehead[1] + change[1])
 
 
 
@@ -115,6 +161,17 @@ class SnakeGame:
             # Game over, snake hit a wall, or itself. Show the game over screen
             while self.gameClose:
                 self.gameOverScreen()
+
+
+
+            if self.agent:
+                nextMove = self.agent.selectMove((self.x1, self.y1), (self.foodx, self.foody), self.getValidActions())
+
+                newEvent = pygame.event.Event(pygame.KEYDOWN, unicode="a", key=nextMove,
+                                              mod=pygame.KMOD_NONE)
+                pygame.event.post(newEvent)
+
+
 
             # Move the snake, or close the game window
             for event in pygame.event.get():
@@ -133,7 +190,9 @@ class SnakeGame:
             if len(self.snakeList) > self.snakeLength:
                 del self.snakeList[0]
 
-            self.checkCollisions(snakeHead)
+            if self.checkCollisions(snakeHead):
+                self.gameClose = True
+
             self.drawSnake()
             self.eatFood()
 
@@ -146,12 +205,36 @@ class SnakeGame:
         quit()
 
 
+class AStarAgent:
+
+    def selectMove(self, snake, food, validActions):
+        bestDistance = float("inf")
+        bestAction = None
+
+        for action, position in validActions:
+            distance = manhattanHeuristic(position, food)
+            if distance < bestDistance:
+                bestDistance = distance
+                bestAction = action
+
+        return bestAction
+
+
+# Referenced from pacman project
+def manhattanHeuristic(xy1, xy2):
+    return abs(xy1[0] - xy2[0]) + abs(xy1[1] - xy2[1])
+
+
+
+
 # Food collision only works with blockSize = 10 right now
 width = 400
 height = 400
 message = "Play Snake"
 blockSize = 10
-speed = 15
+speed = 100
 
-game = SnakeGame(width, height, message, blockSize, speed)
+agent = AStarAgent()
+
+game = SnakeGame(width, height, message, blockSize, speed, agent)
 game.gameLoop()
