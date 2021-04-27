@@ -51,8 +51,7 @@ class Snake:
             self.direction = "DOWN"
 
 
-    def getChange(self, keyEvent,xChange,yChange):
-        direction = None
+    def getChange(self, keyEvent,xChange,yChange,direction):
 
         if keyEvent == pygame.K_LEFT and self.direction != "RIGHT":
             xChange = -self.blockSize
@@ -70,14 +69,19 @@ class Snake:
             yChange = self.blockSize
             xChange = 0
             direction = "DOWN"
+        else:
+            direction = None
 
         return (xChange, yChange, direction)
+
+    def getActions(self):
+        return [pygame.K_LEFT, pygame.K_RIGHT, pygame.K_UP, pygame.K_DOWN]
 
 
     def getValidActions(self):
         actions = []
         for action in [pygame.K_LEFT, pygame.K_RIGHT, pygame.K_UP, pygame.K_DOWN]:
-            (xChange, yChange, direction) = self.getChange(action,self.x1Change,self.y1Change)
+            (xChange, yChange, direction) = self.getChange(action, self.x1Change, self.y1Change,self.direction)
             if not direction:
                 continue
 
@@ -92,13 +96,23 @@ class Snake:
 
     def getSuccessors(self):
         successors = []
-        for action, position in self.getValidActions():
+        printsuccessors = []
+        for action in self.getActions():
+            (xChange, yChange, direction) = self.getChange(action, self.x1Change, self.y1Change, self.direction)
+            if not direction:
+                continue
+
+            position = self.getNextPosition((self.x1, self.y1), (xChange, yChange))
             newSnake = copy.deepcopy(self)
             newSnake.x1 = position[0]
             newSnake.y1 = position[1]
+            newSnake.x1Change = xChange
+            newSnake.y1Change = yChange
+            newSnake.direction = direction
             newSnake.move2(position)
-            successors.append((newSnake, action))
-
+            if not self.checkCollisions(position):
+                successors.append((newSnake,action))
+                printsuccessors.append((position,direction))
         return successors
 
     def move2(self,snakeHead):
@@ -141,8 +155,11 @@ class SnakeGame:
         self.spawnFood()
 
     def spawnFood(self):
-        self.foodx = round(random.randrange(self.blockSize, self.displayWidth - (self.blockSize * 2)) / self.blockSize) * self.blockSize
-        self.foody = round(random.randrange(self.blockSize, self.displayHeight - (self.blockSize * 2)) / self.blockSize) * self.blockSize
+        while True:
+            self.foodx = round(random.randrange(self.blockSize, self.displayWidth - (self.blockSize * 2)) / self.blockSize) * self.blockSize
+            self.foody = round(random.randrange(self.blockSize, self.displayHeight - (self.blockSize * 2)) / self.blockSize) * self.blockSize
+            if (self.foodx,self.foody) not in self.snake.snakelist:
+                break
 
     def updatePlayerScore(self):
         self.playerScore = self.snake.snakelength - 1
@@ -249,16 +266,18 @@ class AStarAgent:
 
     def __init__(self):
         self.path = []
+        self.goal = None
 
     def selectMove(self, snake, food):
+        if not self.goal or self.goal != food:
+            self.path = self.computePath(snake, food)
         if not self.path:
             self.path = self.computePath(snake,food)
-            print(self.path)
 
-            if not self.path:
-                return None
+        if not self.path:
+            return None
 
-        nextMove = self.path.pop()
+        nextMove = self.path.pop(0)
         return nextMove
 
     def computePath(self, snake, food):
@@ -269,18 +288,22 @@ class AStarAgent:
 
         while not frontier.isEmpty():
             node = frontier.pop()
+            position = (node[0].x1, node[0].y1)
             if (node[0].x1, node[0].y1) == food:
                 return node[1]
-            if node[0] in explored:
+            if position in explored:
                 continue
-            explored.add(node[0])
+            explored.add(position)
             for child in node[0].getSuccessors():
-                if child[0] not in explored:
+                childposition = (child[0].x1,child[0].y1)
+                if childposition not in explored:
                     frontier.push((child[0], node[1]+[child[1]]), manhattanHeuristic)
+        return []
 
     #state = (snake,list of actions so far)
     def aStarHelperFn(self, state, goal, heuristic):
-        return len(state[1]) + heuristic((state[0].x1, state[0].y1), goal)
+        # print((heuristic((state[0].x1, state[0].y1), goal) // state[0].blockSize))
+        return len(state[1]) + (heuristic((state[0].x1, state[0].y1), goal) // state[0].blockSize)
 
 
 # Referenced from pacman project
@@ -292,16 +315,16 @@ def manhattanHeuristic(xy1, xy2):
 
 
 
-width = 400
-height = 400
+width = 600
+height = 600
 message = "Play Snake"
 blockSize = 20
-speed = 10
+speed = 20
 
 agent = ManhattanAgent()
 aStarAgent = AStarAgent()
 
-game = SnakeGame(width, height, message, blockSize, speed, agent)
-# game = SnakeGame(width, height, message, blockSize, speed, aStarAgent)
+# game = SnakeGame(width, height, message, blockSize, speed, agent)
+game = SnakeGame(width, height, message, blockSize, speed, aStarAgent)
 
 game.gameLoop()
