@@ -3,6 +3,7 @@ import time
 import random
 import utils
 import copy
+import sys
 
 class Snake:
     def __init__(self, x, y, bounds, blockSize):
@@ -398,20 +399,36 @@ def manhattanHeuristic(xy1, xy2):
 
 
 
+def main():
+    if len(sys.argv) > 1:
+        aiAgent = sys.argv[1]
+    else:
+        aiAgent = "manhattan"
+
+    width = 600
+    height = 400
+    message = "Play Snake"
+    blockSize = 20
+    speed = 15
+
+    if aiAgent == "manhattan":
+        agent = ManhattanAgent()
+    elif aiAgent == "astar":
+        agent = AStarAgent()
+    elif aiAgent == "longestpath":
+        agent = LongestPathAgent()
+    else:
+        print("Invalid agent name")
+        exit()
+
+    game = SnakeGame(width, height, message, blockSize, speed, agent)
+
+    game.gameLoop()
 
 
-width = 400
-height = 400
-message = "Play Snake"
-blockSize = 20
-speed = 20
+if __name__ == "__main__":
+    main()
 
-agent = ManhattanAgent()
-aStarAgent = AStarAgent()
-longestAgent = LongestPathAgent()
 
-# game = SnakeGame(width, height, message, blockSize, speed, agent)
-game = SnakeGame(width, height, message, blockSize, speed, longestAgent)
-#game = SnakeGame(width, height, message, blockSize, speed, aStarAgent)
 
-game.gameLoop()
+
