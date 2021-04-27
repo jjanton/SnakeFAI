@@ -344,6 +344,8 @@ class LongestPathAgent:
         # print((heuristic((state[0].x1, state[0].y1), goal) // state[0].blockSize))
         return len(state[1]) + (heuristic((state[0].x1, state[0].y1), goal) // state[0].blockSize)
 
+
+    # Referenced and adapted from: https://github.com/gsurma/slitherin/blob/master/game/models/domain_specific/longest_path_ai_solver.py
     def computeLongestPath(self, snake, food):
         blockSize = snake.blockSize
         boundsX = (0,snake.bounds[0])
