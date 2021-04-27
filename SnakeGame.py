@@ -266,11 +266,8 @@ class AStarAgent:
 
     def __init__(self):
         self.path = []
-        self.goal = None
 
     def selectMove(self, snake, food):
-        if not self.goal or self.goal != food:
-            self.path = self.computePath(snake, food)
         if not self.path:
             self.path = self.computePath(snake,food)
 
@@ -306,6 +303,92 @@ class AStarAgent:
         return len(state[1]) + (heuristic((state[0].x1, state[0].y1), goal) // state[0].blockSize)
 
 
+
+class LongestPathAgent:
+
+    def __init__(self):
+        self.path = []
+
+    def selectMove(self, snake, food):
+        if not self.path:
+            self.path = self.computeLongestPath(snake,food)
+
+        if not self.path:
+            return None
+
+        nextMove = self.path.pop(0)
+        return nextMove
+
+    def computePath(self, snake, food):
+        frontier = utils.myPriorityQueue(food, self.aStarHelperFn)
+        state = (snake,[(None,(snake.x1,snake.y1))])
+        explored = set()
+        frontier.push(state, manhattanHeuristic)
+
+        while not frontier.isEmpty():
+            node = frontier.pop()
+            position = (node[0].x1, node[0].y1)
+            if (node[0].x1, node[0].y1) == food:
+                return node[1]
+            if position in explored:
+                continue
+            explored.add(position)
+            for child in node[0].getSuccessors():
+                childposition = (child[0].x1,child[0].y1)
+                if childposition not in explored:
+                    frontier.push((child[0], node[1]+[(child[1],childposition)]), manhattanHeuristic)
+        return []
+
+    #state = (snake,list of actions so far)
+    def aStarHelperFn(self, state, goal, heuristic):
+        # print((heuristic((state[0].x1, state[0].y1), goal) // state[0].blockSize))
+        return len(state[1]) + (heuristic((state[0].x1, state[0].y1), goal) // state[0].blockSize)
+
+    def computeLongestPath(self, snake, food):
+        blockSize = snake.blockSize
+        boundsX = (0,snake.bounds[0])
+        boundsY = (0,snake.bounds[1])
+        # compute shortest path, where path = list of (action,resulting position)
+        path = self.computePath(snake, food)
+        if not path or len(path) <= 1:
+            return path
+        index = 0
+        while True:
+            a = path[index][1]
+            b = path[index + 1][1]
+            action = path[index+1][0]
+            positions = [p[1] for p in path]
+            if action in [pygame.K_LEFT, pygame.K_RIGHT]:
+                c = (a[0],a[1]-blockSize)
+                d = (b[0],b[1]-blockSize)
+                if c not in positions and d not in positions and c[1]>=boundsY[0]:
+                    path = path[:index] + [(path[index][0],a),(pygame.K_UP,c),(action,d),(pygame.K_DOWN,b)] + path[index+1:]
+                    continue
+                c = (a[0], a[1] + blockSize)
+                d = (b[0], b[1] + blockSize)
+                if c not in positions and d not in positions and c[1]<=boundsY[1]:
+                    path = path[:index] + [(path[index][0],a), (pygame.K_DOWN, c), (action, d), (pygame.K_UP, b)] + path[index+1:]
+                    continue
+            elif action in [pygame.K_UP, pygame.K_DOWN]:
+                c = (a[0]+blockSize,a[1])
+                d = (b[0]+blockSize,b[1])
+                if c not in positions and d not in positions and c[0]<=boundsX[1]:
+                    path = path[:index] + [(path[index][0],a),(pygame.K_RIGHT,c),(action,d),(pygame.K_LEFT,b)] + path[index+1:]
+                    continue
+                c = (a[0] - blockSize, a[1])
+                d = (b[0] - blockSize, b[1])
+                if c not in positions and d not in positions and c[0]>=boundsX[0]:
+                    path = path[:index] + [(path[index][0],a),(pygame.K_LEFT,c),(action,d),(pygame.K_RIGHT,b)] + path[index+1:]
+                    continue
+
+            index += 1
+            if index == len(path) - 1:
+                break
+       # print([p[1] for p in path])
+        return [p[0] for p in path][1:]
+
+
+
 # Referenced from pacman project
 def manhattanHeuristic(xy1, xy2):
     return abs(xy1[0] - xy2[0]) + abs(xy1[1] - xy2[1])
@@ -315,16 +398,18 @@ def manhattanHeuristic(xy1, xy2):
 
 
 
-width = 600
-height = 600
+width = 400
+height = 400
 message = "Play Snake"
 blockSize = 20
 speed = 20
 
 agent = ManhattanAgent()
 aStarAgent = AStarAgent()
+longestAgent = LongestPathAgent()
 
 # game = SnakeGame(width, height, message, blockSize, speed, agent)
-game = SnakeGame(width, height, message, blockSize, speed, aStarAgent)
+game = SnakeGame(width, height, message, blockSize, speed, longestAgent)
+#game = SnakeGame(width, height, message, blockSize, speed, aStarAgent)
 
 game.gameLoop()
