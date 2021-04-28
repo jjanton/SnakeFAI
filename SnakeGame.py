@@ -176,8 +176,6 @@ class SnakeGame:
         self.display.blit(mesg, [self.displayWidth / 6, self.displayHeight / 3])
 
 
-
-
     def gameOverScreen(self):
         self.display.fill(self.blue)
         self.message("You Lost! Press C-Play Again or Q-Quit", self.red)
@@ -197,9 +195,6 @@ class SnakeGame:
         if self.snake.x1 == self.foodx and self.snake.y1 == self.foody:
             self.spawnFood()
             self.snake.snakelength += 1
-
-
-
 
 
     def gameLoop(self):
@@ -244,7 +239,6 @@ class SnakeGame:
 
         pygame.quit()
         quit()
-
 
 
 
@@ -387,16 +381,28 @@ class LongestPathAgent:
             index += 1
             if index == len(path) - 1:
                 break
-       # print([p[1] for p in path])
         return [p[0] for p in path][1:]
+
+# Referenced and adapted from: https://github.com/gsurma/slitherin/blob/master/game/models/domain_specific/hamilton_ai_solver.py
+class HamiltonAgent(LongestPathAgent):
+    def selectMove(self, snake, food):
+        if not self.path:
+            if snake.snakelist:
+                tail = snake.snakelist[-1]
+            else:
+                tail = (snake.x1+snake.blockSize,snake.y1)
+            self.path = self.computeLongestPath(snake,tail)
+        if not self.path:
+            return None
+
+        nextMove = self.path.pop(0)
+        return nextMove
 
 
 
 # Referenced from pacman project
 def manhattanHeuristic(xy1, xy2):
     return abs(xy1[0] - xy2[0]) + abs(xy1[1] - xy2[1])
-
-
 
 
 def main():
@@ -417,6 +423,8 @@ def main():
         agent = AStarAgent()
     elif aiAgent == "longestpath":
         agent = LongestPathAgent()
+    elif aiAgent == "hamilton":
+        agent = HamiltonAgent()
     else:
         print("Invalid agent name")
         exit()
