@@ -10,6 +10,7 @@ valid agents:
 * manhattan
 * astar
 * longestpath
+* hamilton
 
 python3 SnakeGame.py agent
 

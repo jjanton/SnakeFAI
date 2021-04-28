@@ -4,6 +4,7 @@ import random
 import utils
 import copy
 import sys
+from statistics import mean
 
 class Snake:
     def __init__(self, x, y, bounds, blockSize):
@@ -124,13 +125,17 @@ class Snake:
 
 class SnakeGame:
 
-    def __init__(self, displayWidth, displayHeight, displayCaption, blockSize, snakeSpeed, agent = None):
+    def __init__(self, displayWidth, displayHeight, displayCaption, blockSize, snakeSpeed, numIterations, agent = None):
         self.displayWidth = displayWidth
         self.displayHeight = displayHeight
         self.blockSize = blockSize
         self.bounds = (self.displayWidth - self.blockSize, self.displayHeight - self.blockSize)
         self.snakeSpeed = snakeSpeed
         self.agent = agent
+
+        self.scores = []
+        self.numIterations = numIterations
+        self.currentRunNum = 1
 
         pygame.init()
         self.display = pygame.display.set_mode((displayWidth, displayHeight))
@@ -178,24 +183,41 @@ class SnakeGame:
 
     def gameOverScreen(self):
         self.display.fill(self.blue)
-        self.message("You Lost! Press C-Play Again or Q-Quit", self.red)
-        # self.playerScore(self.snake.snakelength - 1)
+        self.scores.append(self.playerScore)
+        message = "Average score: " + str(mean(self.scores))
+        self.message(message, self.red)
         pygame.display.update()
 
-        for event in pygame.event.get():
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_q:
-                    self.gameOver = True
-                    self.gameClose = False
-                if event.key == pygame.K_c:
-                    self.initializeSnakeVariables()
-                    self.gameLoop()
+        # Run through all iterationcs
+        while self.currentRunNum < self.numIterations:
+            # Increment
+            self.currentRunNum += 1
+            # Save player score
+            self.scores.append(self.playerScore)
+            self.playerScore = 0
+            # Run another iteration
+            self.initializeSnakeVariables()
+            self.gameLoop()
+        time.sleep(5)
+        self.gameOver = True
+        self.gameClose = False
+
+        # for event in pygame.event.get():
+        #     if event.type == pygame.KEYDOWN:
+        #         if event.key == pygame.K_q:
+        #             self.gameOver = True
+        #             self.gameClose = False
+        #         if event.key == pygame.K_c:
+        #             self.initializeSnakeVariables()
+        #             self.gameLoop()
 
     def eatFood(self):
         if self.snake.x1 == self.foodx and self.snake.y1 == self.foody:
             self.spawnFood()
             self.snake.snakelength += 1
 
+    def getScores(self):
+        return self.scores
 
     def gameLoop(self):
         while not self.gameOver:
@@ -237,6 +259,7 @@ class SnakeGame:
             pygame.display.update()
             self.clock.tick(self.snakeSpeed)
 
+        print("Reached end of gameLoop")
         pygame.quit()
         quit()
 
@@ -406,13 +429,17 @@ def manhattanHeuristic(xy1, xy2):
 
 
 def main():
+
+    # Set number of iterations to run agent through
+    NUM_ITERATIONS = 1000
+
     if len(sys.argv) > 1:
         aiAgent = sys.argv[1]
     else:
         aiAgent = "manhattan"
 
-    width = 600
-    height = 400
+    width = 800
+    height = 600
     message = "Play Snake"
     blockSize = 20
     speed = 15
@@ -429,7 +456,7 @@ def main():
         print("Invalid agent name")
         exit()
 
-    game = SnakeGame(width, height, message, blockSize, speed, agent)
+    game = SnakeGame(width, height, message, blockSize, speed, NUM_ITERATIONS, agent)
 
     game.gameLoop()
 
